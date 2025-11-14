@@ -66,6 +66,32 @@ export default function Index() {
     if (stored) {
       const parsed = JSON.parse(stored);
       setEntries(parsed.map((e: any) => ({ ...e, timestamp: new Date(e.timestamp) })));
+    } else {
+      const demoEntries: DiaryEntry[] = [
+        {
+          id: '1',
+          text: 'Сегодня был отличный день! Встретился с друзьями, мы много смеялись и гуляли в парке.',
+          emotion: 'positive',
+          advice: adviceText.positive,
+          timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        },
+        {
+          id: '2',
+          text: 'Работал весь день, ничего особенного не произошло. Обычный рабочий день.',
+          emotion: 'neutral',
+          advice: adviceText.neutral,
+          timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+        },
+        {
+          id: '3',
+          text: 'Я устал сегодня в школе, было тяжело. Много домашних заданий.',
+          emotion: 'negative',
+          advice: adviceText.negative,
+          timestamp: new Date(),
+        },
+      ];
+      setEntries(demoEntries);
+      localStorage.setItem('mood-diary-entries', JSON.stringify(demoEntries));
     }
 
     const darkMode = localStorage.getItem('mood-diary-theme') === 'dark';
