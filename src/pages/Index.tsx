@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -59,7 +60,10 @@ export default function Index() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [isDark, setIsDark] = useState(false);
+  const [useTextInput, setUseTextInput] = useState(false);
+  const [textInput, setTextInput] = useState('');
   const { toast } = useToast();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('mood-diary-entries');
@@ -143,11 +147,21 @@ export default function Index() {
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
       setIsRecording(false);
-      toast({
-        title: 'Ошибка записи',
-        description: 'Не удалось распознать речь. Попробуйте еще раз.',
-        variant: 'destructive',
-      });
+      
+      if (event.error === 'not-allowed') {
+        toast({
+          title: 'Нет доступа к микрофону',
+          description: 'Разрешите доступ к микрофону в настройках браузера или используйте текстовый ввод',
+          variant: 'destructive',
+        });
+        setUseTextInput(true);
+      } else {
+        toast({
+          title: 'Ошибка записи',
+          description: 'Не удалось распознать речь. Попробуйте еще раз.',
+          variant: 'destructive',
+        });
+      }
     };
 
     recognition.onend = () => {
@@ -222,6 +236,20 @@ export default function Index() {
 
     setRecognizedText('');
     setEmotion(null);
+    setTextInput('');
+  };
+
+  const handleTextAnalyze = () => {
+    if (!textInput.trim()) {
+      toast({
+        title: 'Пустой текст',
+        description: 'Напиши что-нибудь, чтобы я мог проанализировать твоё настроение',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setRecognizedText(textInput);
+    analyzeEmotion(textInput);
   };
 
   const deleteEntry = (id: string) => {
@@ -282,26 +310,76 @@ export default function Index() {
             <Card>
               <CardHeader>
                 <CardTitle>Запиши свои мысли</CardTitle>
-                <CardDescription>Нажми на микрофон и расскажи, как прошёл твой день</CardDescription>
+                <CardDescription>
+                  {useTextInput 
+                    ? 'Напиши, как прошёл твой день' 
+                    : 'Нажми на микрофон и расскажи, как прошёл твой день'}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex justify-center">
-                  <Button
-                    size="lg"
-                    onClick={startRecording}
-                    disabled={isRecording}
-                    className={`w-24 h-24 rounded-full shadow-lg ${
-                      isRecording ? 'animate-pulse-soft bg-red-500 hover:bg-red-600' : ''
-                    }`}
-                  >
-                    <Icon name="Mic" size={40} />
-                  </Button>
-                </div>
+                {!useTextInput ? (
+                  <>
+                    <div className="flex justify-center">
+                      <Button
+                        size="lg"
+                        onClick={startRecording}
+                        disabled={isRecording}
+                        className={`w-24 h-24 rounded-full shadow-lg ${
+                          isRecording ? 'animate-pulse-soft bg-red-500 hover:bg-red-600' : ''
+                        }`}
+                      >
+                        <Icon name="Mic" size={40} />
+                      </Button>
+                    </div>
 
-                {isRecording && (
-                  <p className="text-center text-sm text-muted-foreground animate-pulse">
-                    Слушаю тебя...
-                  </p>
+                    {isRecording && (
+                      <p className="text-center text-sm text-muted-foreground animate-pulse">
+                        Слушаю тебя...
+                      </p>
+                    )}
+
+                    <div className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setUseTextInput(true)}
+                        className="text-muted-foreground"
+                      >
+                        <Icon name="Keyboard" size={16} className="mr-2" />
+                        Использовать текстовый ввод
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-3">
+                      <Textarea
+                        ref={textareaRef}
+                        placeholder="Напиши, как прошёл твой день..."
+                        value={textInput}
+                        onChange={(e) => setTextInput(e.target.value)}
+                        className="min-h-[120px] resize-none"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={handleTextAnalyze}
+                          className="flex-1"
+                          disabled={!textInput.trim()}
+                        >
+                          <Icon name="Sparkles" size={18} className="mr-2" />
+                          Проанализировать
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setUseTextInput(false)}
+                          title="Переключиться на голосовой ввод"
+                        >
+                          <Icon name="Mic" size={18} />
+                        </Button>
+                      </div>
+                    </div>
+                  </>
                 )}
 
                 {recognizedText && (
